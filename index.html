@@ -1,0 +1,363 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <title>TokSeDa POS</title>
+
+    <!-- Bootstrap 5 -->
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  </head>
+  <body class="bg-light">
+    <div class="container py-4">
+      <h3 class="mb-4">🛒 TokSeDa</h3>
+      <p style="font-weight: bold">
+        Selamat Datang Diandra 👋 Terima Kasih Telah Menghubungi TokSeDa
+        Permintaan Anda Akan Diproses
+      </p>
+
+      <!-- BUTTON MENU -->
+      <div class="mb-3 d-flex flex-wrap gap-2">
+        <button class="btn btn-primary" onclick="tampilkanData()" id="btnData">
+          Tampilkan Data
+        </button>
+        <button class="btn btn-danger" onclick="batalkanPembelian()">
+          Batalkan
+        </button>
+        <button class="btn btn-warning" onclick="opsiCicilan()">Cicilan</button>
+        <button class="btn btn-success" onclick="setujuPembelian()">
+          Setuju
+        </button>
+        <button
+          class="btn btn-secondary"
+          onclick="tampilkanRiwayat()"
+          id="btnRiwayat"
+        >
+          Riwayat
+        </button>
+      </div>
+
+      <!-- TABEL -->
+      <table class="table table-bordered bg-white">
+        <thead class="table-dark">
+          <tr>
+            <th>Nama</th>
+            <th>Barang</th>
+            <th>Harga</th>
+          </tr>
+        </thead>
+        <tbody id="table-body">
+          <tr>
+            <td colspan="3" class="text-center text-muted">Belum ada data</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <!-- TOTAL -->
+      <h5 id="total">Total: Rp 0</h5>
+
+      <!-- OUTPUT -->
+      <div class="mt-4">
+        <h5>📋 Output</h5>
+        <div
+          id="output"
+          class="bg-white p-3 border rounded"
+          style="min-height: 100px"
+        ></div>
+      </div>
+    </div>
+
+    <script>
+      // ================= DATA =================
+      let data_pembelian = [
+        { nama: "Diandra", barang: "HP IP 17 Pro Max", harga: 24999000 },
+        { nama: "Gazzael", barang: "Motor Aerox New", harga: 41700000 },
+        { nama: "Ismail", barang: "PS 5", harga: 10000000 },
+      ];
+
+      let riwayat_pembatalan = [];
+      let riwayat_pembelian = [];
+      let showRiwayat = false;
+      let showData = false;
+
+      // ================= HELPER =================
+      function updateOutput(text) {
+        document.getElementById("output").innerHTML = text;
+      }
+
+      function hitungTotal() {
+        return data_pembelian.reduce((t, d) => t + d.harga, 0);
+      }
+
+      // ================= TAMPILKAN DATA =================
+      function tampilkanData() {
+        let tbody = document.getElementById("table-body");
+        let total = document.getElementById("total");
+
+        showData = !showData;
+
+        // kalau disembunyikan
+        if (!showData) {
+          tbody.innerHTML = `
+      <tr>
+        <td colspan="3" class="text-center text-muted">Data disembunyikan</td>
+      </tr>
+    `;
+          total.innerText = "Total: Rp 0";
+
+          document.getElementById("btnData").innerText = "Tampilkan Data";
+          return;
+        }
+
+        // kalau ditampilkan
+        tbody.innerHTML = "";
+
+        if (data_pembelian.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="3" class="text-center">Kosong</td></tr>`;
+        } else {
+          data_pembelian.forEach((data) => {
+            tbody.innerHTML += `
+        <tr>
+          <td>${data.nama}</td>
+          <td>${data.barang}</td>
+          <td>Rp ${data.harga.toLocaleString()}</td>
+        </tr>
+      `;
+          });
+        }
+
+        total.innerText = "Total: Rp " + hitungTotal().toLocaleString();
+
+        document.getElementById("btnData").innerText = "Sembunyikan Data";
+      }
+
+      // ================= BATALKAN =================
+      function batalkanPembelian() {
+        Swal.fire({
+          html: "<h5>Masukkan Nama Untuk Membatalkan Pembelian</h5>",
+          input: "text",
+          inputPlaceholder: "Contoh: Diandra",
+          showCancelButton: true,
+        }).then((result) => {
+          if (!result.isConfirmed || !result.value) return;
+
+          let nama = result.value;
+
+          // pilih alasan
+          Swal.fire({
+            title: "Pilih Alasan",
+            input: "select",
+            inputOptions: {
+              1: "Harga Tidak Masuk Akal",
+              2: "Tidak Diperlukan",
+              3: "Pengiriman Lama",
+              4: "Salah Pesan",
+              5: "Salah Alamat",
+            },
+            showCancelButton: true,
+          }).then((resAlasan) => {
+            if (!resAlasan.isConfirmed) return;
+
+            let alasanText = resAlasan.value;
+
+            // loading animasi
+            Swal.fire({
+              title: "Memproses...",
+              text: "Mohon tunggu",
+              allowOutsideClick: false,
+              didOpen: () => {
+                Swal.showLoading();
+              },
+            });
+
+            setTimeout(() => {
+              let ditemukan = false;
+
+              data_pembelian = data_pembelian.filter((data) => {
+                if (data.nama.toLowerCase() === nama.toLowerCase()) {
+                  riwayat_pembatalan.push({
+                    ...data,
+                    waktu: new Date().toLocaleString(),
+                    alasan: alasanText,
+                  });
+
+                  ditemukan = true;
+                  return false;
+                }
+                return true;
+              });
+
+              tampilkanData();
+
+              if (ditemukan) {
+                Swal.fire({
+                  icon: "success",
+                  title: "Berhasil!",
+                  text: `${nama} berhasil dibatalkan`,
+                });
+              } else {
+                Swal.fire({
+                  icon: "error",
+                  title: "Gagal",
+                  text: "Nama tidak ditemukan",
+                });
+              }
+            }, 2000);
+          });
+        });
+      }
+
+      // ================= CICILAN =================
+      function opsiCicilan() {
+        Swal.fire({
+          title: "Masukkan Nama",
+          input: "text",
+          inputPlaceholder: "Contoh: Diandra",
+          showCancelButton: true,
+        }).then((result) => {
+          if (!result.isConfirmed || !result.value) return;
+
+          let nama = result.value;
+
+          let data = data_pembelian.find(
+            (d) => d.nama.toLowerCase() === nama.toLowerCase(),
+          );
+
+          if (!data) {
+            return Swal.fire("Error", "Nama tidak ditemukan", "error");
+          }
+
+          // pilih tenor
+          Swal.fire({
+            title: "Pilih Tenor",
+            input: "select",
+            inputOptions: {
+              3: "3 Bulan",
+              6: "6 Bulan",
+              12: "12 Bulan",
+            },
+            showCancelButton: true,
+          }).then((resTenor) => {
+            if (!resTenor.isConfirmed) return;
+
+            let tenor = parseInt(resTenor.value);
+
+            let cicilan = data.harga / tenor;
+            let hari = Math.floor(Math.random() * 5) + 3;
+
+            Swal.fire({
+              icon: "info",
+              title: "Detail Cicilan",
+              html: `
+          💳 <b>${data.nama}</b><br><br>
+          Cicilan: Rp ${cicilan.toLocaleString()} / bulan<br>
+          Estimasi sampai: ${hari} hari
+        `,
+            });
+          });
+        });
+      }
+
+      // ================= SETUJU =================
+      function setujuPembelian() {
+        Swal.fire({
+          title: "Masukkan Nama",
+          input: "text",
+          inputPlaceholder: "Contoh: Diandra",
+          showCancelButton: true,
+        }).then((result) => {
+          if (!result.isConfirmed || !result.value) return;
+
+          let nama = result.value;
+
+          let data = data_pembelian.find(
+            (d) => d.nama.toLowerCase() === nama.toLowerCase(),
+          );
+
+          if (!data) {
+            return Swal.fire("Error", "Nama tidak ditemukan", "error");
+          }
+
+          // konfirmasi dulu
+          Swal.fire({
+            title: "Konfirmasi",
+            text: `Setujui pembelian ${data.nama}?`,
+            icon: "question",
+            showCancelButton: true,
+            confirmButtonText: "Ya",
+          }).then((confirm) => {
+            if (!confirm.isConfirmed) return;
+
+            // loading
+            Swal.fire({
+              title: "Memproses...",
+              allowOutsideClick: false,
+              didOpen: () => Swal.showLoading(),
+            });
+
+            setTimeout(() => {
+              let now = new Date();
+              let estimasi = Math.floor(Math.random() * 5) + 3;
+
+              let tanggal = new Date();
+              tanggal.setDate(now.getDate() + estimasi);
+
+              riwayat_pembelian.push({
+                nama: data.nama,
+                barang: data.barang,
+                waktu: now.toLocaleString(),
+                estimasi: tanggal.toLocaleDateString(),
+              });
+
+              Swal.fire({
+                icon: "success",
+                title: "Pembelian Disetujui",
+                html: `
+            ✅ <b>${data.nama}</b><br><br>
+            Estimasi tiba: ${tanggal.toLocaleDateString()}
+          `,
+              });
+            }, 1500);
+          });
+        });
+      }
+
+      // ================= RIWAYAT =================
+      function tampilkanRiwayat() {
+        let container = document.getElementById("output");
+        let btn = document.getElementById("btnRiwayat");
+
+        showRiwayat = !showRiwayat;
+
+        if (!showRiwayat) {
+          container.innerHTML = "";
+          btn.innerText = "Tampilkan Riwayat";
+          return;
+        }
+
+        btn.innerText = "Sembunyikan Riwayat";
+
+        if (riwayat_pembatalan.length === 0) {
+          container.innerHTML = "Belum ada pembatalan";
+          return;
+        }
+
+        let html = "";
+
+        riwayat_pembatalan.forEach((data) => {
+          html += `
+      ❌ ${data.nama} - ${data.barang}<br>
+      🕒 ${data.waktu}<br>
+      📌 ${data.alasan}<br><hr>
+    `;
+        });
+
+        container.innerHTML = html;
+      }
+    </script>
+  </body>
+</html>
